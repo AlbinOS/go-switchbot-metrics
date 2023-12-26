@@ -16,7 +16,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 package main
 
-import "github.com/AlbinOS/go-switchbot-influx/cmd"
+import "github.com/AlbinOS/go-switchbot-metrics/cmd"
 
 func main() {
 	cmd.Execute()

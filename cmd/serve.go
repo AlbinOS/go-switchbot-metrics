@@ -17,8 +17,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"github.com/AlbinOS/go-switchbot-influx/serve"
+	"github.com/AlbinOS/go-switchbot-metrics/serve"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // serveCmd represents the serve command
@@ -43,7 +44,17 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// serveCmd.PersistentFlags().String("foo", "", "A help for foo")
+	serveCmd.PersistentFlags().String("bind_ip", "127.0.0.1", "App ip to listen to")
+	viper.BindPFlag("bind_ip", serveCmd.PersistentFlags().Lookup("bind_ip"))
+
+	serveCmd.PersistentFlags().String("bind_port", "3000", "App port to listen to")
+	viper.BindPFlag("bind_port", serveCmd.PersistentFlags().Lookup("bind_port"))
+
+	serveCmd.PersistentFlags().String("switchbot_open_token", "", "SwitchBot API token")
+	viper.BindPFlag("switchbot_open_token", serveCmd.PersistentFlags().Lookup("switchbot_open_token"))
+
+	serveCmd.PersistentFlags().String("switchbot_secret_key", "", "SwitchBot API secery key")
+	viper.BindPFlag("switchbot_secret_key", serveCmd.PersistentFlags().Lookup("switchbot_secret_key"))
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:

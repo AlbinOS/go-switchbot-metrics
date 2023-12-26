@@ -20,51 +20,91 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"sync"
 	"time"
 
-	"github.com/go-co-op/gocron"
-	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
-	"github.com/influxdata/influxdb-client-go/v2/api"
+	"github.com/gofiber/fiber/v2"
+	fiberLogger "github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/monitor"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/nasa9084/go-switchbot"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 )
 
-const (
-	openToken   = ""
-	secretKey   = ""
-	influxToken = ""
-)
+var switchbotClient *switchbot.Client
 
-var c *switchbot.Client
-var client influxdb2.Client
-var writeAPI api.WriteAPIBlocking
+// func fetch() {
+// 	// get physical devices and show
+// 	pdev, _, _ := c.Device().List(context.Background())
 
-func fetch() {
-	// get physical devices and show
-	pdev, _, _ := c.Device().List(context.Background())
+// 	for _, d := range pdev {
+// 		if d.Type != switchbot.HubMini {
+// 			deviceStatus, err := c.Device().Status(context.Background(), d.ID)
 
+// 			if err != nil {
+// 				fmt.Printf("%s\t%s\t%s\n", d.Type, d.Name, err)
+// 			} else {
+// 				timestamp := time.Now()
+// 				// Create a point using the full parameters constructor
+// 				pt := influxdb2.NewPoint("temperature",
+// 					map[string]string{"device_name": d.Name, "device_type": string(d.Type)},
+// 					map[string]interface{}{"battery": deviceStatus.Battery, "humidity": deviceStatus.Humidity, "temperature": deviceStatus.Temperature},
+// 					timestamp)
+// 				// Write the point immediately
+// 				writeAPI.WritePoint(context.Background(), pt)
+// 			}
+// 		}
+// 	}
+
+// 	// Ensure that background processes finish
+// 	client.Close()
+// }
+
+type Meter struct {
+	DeviceId    string  `json:"deviceId"`
+	HubDeviceId string  `json:"hubDeviceId"`
+	DeviceName  string  `json:"deviceName"`
+	DeviceType  string  `json:"deviceType"`
+	Battery     int     `json:"battery"`
+	Humidity    int     `json:"humidity"`
+	Temperature float64 `json:"temperature"`
+}
+
+type Meters []Meter
+
+func handler(c *fiber.Ctx) error {
+	pdev, _, err := switchbotClient.Device().List(context.Background())
+	if err != nil {
+		return fiber.NewError(fiber.StatusServiceUnavailable, fmt.Errorf("getting device lsit: %v", err).Error())
+	}
+
+	var result Meters
 	for _, d := range pdev {
 		if d.Type != switchbot.HubMini {
-			deviceStatus, err := c.Device().Status(context.Background(), d.ID)
+			deviceStatus, err := switchbotClient.Device().Status(context.Background(), d.ID)
 
 			if err != nil {
-				fmt.Printf("%s\t%s\t%s\n", d.Type, d.Name, err)
+				log.Error().Str("deviceId", d.ID).Str("hubId", d.Hub).Str("deviceName", d.Name).Str("deviceType", string(d.Type)).Err(err).Msg("Fetching device status failed!")
 			} else {
-				timestamp := time.Now()
-				// Create a point using the full parameters constructor
-				pt := influxdb2.NewPoint("temperature",
-					map[string]string{"device_name": d.Name, "device_type": string(d.Type)},
-					map[string]interface{}{"battery": deviceStatus.Battery, "humidity": deviceStatus.Humidity, "temperature": deviceStatus.Temperature},
-					timestamp)
-				// Write the point immediately
-				writeAPI.WritePoint(context.Background(), pt)
+				result = append(result,
+					Meter{
+						DeviceId:    d.ID,
+						HubDeviceId: d.Hub,
+						DeviceName:  d.Name,
+						DeviceType:  string(d.Type),
+						Battery:     deviceStatus.Battery,
+						Humidity:    deviceStatus.Humidity,
+						Temperature: deviceStatus.Temperature,
+					},
+				)
 			}
 		}
 	}
 
-	// Ensure that background processes finish
-	client.Close()
+	return c.JSON(result)
 }
 
 func Init() {
@@ -73,23 +113,37 @@ func Init() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).Level(logLevel)
 
 	// Initialize the SwitchBot client
-	c = switchbot.New(openToken, secretKey)
+	switchbotClient = switchbot.New(viper.GetString("switchbot_open_token"), viper.GetString("switchbot_secret_key"))
 
-	// Initialize the InfluxDB client
-	client = influxdb2.NewClient("http://localhost:8086", influxToken)
-	writeAPI = client.WriteAPIBlocking("GoPex", "Home")
+	// Init Fiber
+	app := fiber.New()
 
-	// Init scheduler
-	scheduler := gocron.NewScheduler(time.UTC)
+	// Listen for SIGINT (Ctrl+C) and gracefully shutdown the server
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
 
-	// Schedule fetchCurrentBIS every 10 seconds
-	fetchJob, err := scheduler.Every(10).Seconds().Do(fetch)
-	if err != nil {
-		log.Error().Err(err).Msg(fmt.Sprintf("Job error: %v!", fetchJob))
+	var serverShutdown sync.WaitGroup
+
+	go func() {
+		<-c
+		log.Info().Msg("Stopping go-switchbot-metrics serve...")
+		serverShutdown.Add(1)
+		defer serverShutdown.Done()
+		_ = app.ShutdownWithTimeout(60 * time.Second)
+	}()
+
+	// Middlewares
+	app.Use(recover.New())
+	app.Use(fiberLogger.New())
+
+	// Routes
+	app.Get("/meters", handler)
+	app.Get("/metrics", monitor.New(monitor.Config{Title: "Hydro-Watcher Metrics Page"}))
+
+	// Start server
+	if err := app.Listen(fmt.Sprintf("%s:%s", viper.GetString("bind_ip"), viper.GetString("bind_port"))); err != nil {
+		log.Panic().Err(err).Msg("go-switchbot-metrics serve unable to start! ")
 	}
-
-	// Start scheduler
-	log.Info().Msg("Starting go-switchbot-influx fetcher...")
-	scheduler.StartBlocking()
-	log.Info().Msg("go-switchbot-influx stopped!")
+	serverShutdown.Wait()
+	log.Info().Msg("go-switchbot-metrics serve stopped.")
 }
