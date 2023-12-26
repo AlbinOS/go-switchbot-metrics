@@ -12,7 +12,7 @@ RUN go mod download
 COPY . .
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -o /go-switchbot-influx
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -o /go-switchbot-metrics
 
 # Run the tests in the container
 FROM build-stage AS run-test-stage
@@ -23,10 +23,10 @@ FROM gcr.io/distroless/static-debian12 AS build-release-stage
 
 WORKDIR /
 
-COPY --from=build-stage /go-switchbot-influx /go-switchbot-influx
+COPY --from=build-stage /go-switchbot-metrics /go-switchbot-metrics
 
 EXPOSE 3000
 
 USER nonroot:nonroot
 
-ENTRYPOINT ["/go-switchbot-influx"]
+ENTRYPOINT ["/go-switchbot-metrics"]
