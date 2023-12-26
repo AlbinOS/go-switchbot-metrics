@@ -115,7 +115,7 @@ func Init() {
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Pong!")
 	})
-	app.Get("/meters", handler)
+	app.Get("/metrics", handler)
 	app.Get("/monitoring", monitor.New(monitor.Config{Title: "go-switchbot-metrics Monitoring Page"}))
 
 	// Start server
