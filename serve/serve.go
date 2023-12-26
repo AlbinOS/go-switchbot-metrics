@@ -36,7 +36,7 @@ import (
 
 var switchbotClient *switchbot.Client
 
-type Meter struct {
+type DeviceValue struct {
 	DeviceId    string  `json:"deviceId"`
 	HubDeviceId string  `json:"hubDeviceId"`
 	DeviceName  string  `json:"deviceName"`
@@ -46,7 +46,9 @@ type Meter struct {
 	Temperature float64 `json:"temperature"`
 }
 
-type Meters []Meter
+type Metrics struct {
+	DevicesValue []DeviceValue `json:"devicesValue"`
+}
 
 func handler(c *fiber.Ctx) error {
 	pdev, _, err := switchbotClient.Device().List(context.Background())
@@ -55,7 +57,7 @@ func handler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusServiceUnavailable, fmt.Errorf("error getting device list: %v", err).Error())
 	}
 
-	var result Meters
+	var result Metrics
 	for _, d := range pdev {
 		if d.Type != switchbot.HubMini {
 			deviceStatus, err := switchbotClient.Device().Status(context.Background(), d.ID)
@@ -64,8 +66,8 @@ func handler(c *fiber.Ctx) error {
 				log.Error().Str("deviceId", d.ID).Str("hubId", d.Hub).Str("deviceName", d.Name).Str("deviceType", string(d.Type)).Err(err).Msg("fetching device status failed!")
 				return fiber.NewError(fiber.StatusServiceUnavailable, fmt.Errorf("fetching device status failed for %s (%s): %v", d.Name, d.Type, err).Error())
 			} else {
-				result = append(result,
-					Meter{
+				result.DevicesValue = append(result.DevicesValue,
+					DeviceValue{
 						DeviceId:    d.ID,
 						HubDeviceId: d.Hub,
 						DeviceName:  d.Name,
