@@ -88,7 +88,7 @@ func Init() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).Level(logLevel)
 
 	// Initialize the SwitchBot client
-	switchbotClient = switchbot.New(viper.GetString("switchbot_open_token"), viper.GetString("switchbot_secret_key"))
+	switchbotClient = switchbot.New(viper.GetString("switchbot_openapi_token"), viper.GetString("switchbot_secret_key"))
 
 	// Init Fiber
 	app := fiber.New()

@@ -49,8 +49,8 @@ func init() {
 	serveCmd.PersistentFlags().String("bind_port", "3000", "App port to listen to")
 	viper.BindPFlag("bind_port", serveCmd.PersistentFlags().Lookup("bind_port"))
 
-	serveCmd.PersistentFlags().String("switchbot_open_token", "", "SwitchBot API token")
-	viper.BindPFlag("switchbot_open_token", serveCmd.PersistentFlags().Lookup("switchbot_open_token"))
+	serveCmd.PersistentFlags().String("switchbot_openapi_token", "", "SwitchBot Open API token")
+	viper.BindPFlag("switchbot_openapi_token", serveCmd.PersistentFlags().Lookup("switchbot_openapi_token"))
 
 	serveCmd.PersistentFlags().String("switchbot_secret_key", "", "SwitchBot API secery key")
 	viper.BindPFlag("switchbot_secret_key", serveCmd.PersistentFlags().Lookup("switchbot_secret_key"))
