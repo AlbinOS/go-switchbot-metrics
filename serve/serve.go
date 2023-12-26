@@ -36,33 +36,6 @@ import (
 
 var switchbotClient *switchbot.Client
 
-// func fetch() {
-// 	// get physical devices and show
-// 	pdev, _, _ := c.Device().List(context.Background())
-
-// 	for _, d := range pdev {
-// 		if d.Type != switchbot.HubMini {
-// 			deviceStatus, err := c.Device().Status(context.Background(), d.ID)
-
-// 			if err != nil {
-// 				fmt.Printf("%s\t%s\t%s\n", d.Type, d.Name, err)
-// 			} else {
-// 				timestamp := time.Now()
-// 				// Create a point using the full parameters constructor
-// 				pt := influxdb2.NewPoint("temperature",
-// 					map[string]string{"device_name": d.Name, "device_type": string(d.Type)},
-// 					map[string]interface{}{"battery": deviceStatus.Battery, "humidity": deviceStatus.Humidity, "temperature": deviceStatus.Temperature},
-// 					timestamp)
-// 				// Write the point immediately
-// 				writeAPI.WritePoint(context.Background(), pt)
-// 			}
-// 		}
-// 	}
-
-// 	// Ensure that background processes finish
-// 	client.Close()
-// }
-
 type Meter struct {
 	DeviceId    string  `json:"deviceId"`
 	HubDeviceId string  `json:"hubDeviceId"`
@@ -78,7 +51,8 @@ type Meters []Meter
 func handler(c *fiber.Ctx) error {
 	pdev, _, err := switchbotClient.Device().List(context.Background())
 	if err != nil {
-		return fiber.NewError(fiber.StatusServiceUnavailable, fmt.Errorf("getting device lsit: %v", err).Error())
+		log.Error().Err(err).Msg("fetching device list failed!")
+		return fiber.NewError(fiber.StatusServiceUnavailable, fmt.Errorf("error getting device list: %v", err).Error())
 	}
 
 	var result Meters
@@ -87,7 +61,8 @@ func handler(c *fiber.Ctx) error {
 			deviceStatus, err := switchbotClient.Device().Status(context.Background(), d.ID)
 
 			if err != nil {
-				log.Error().Str("deviceId", d.ID).Str("hubId", d.Hub).Str("deviceName", d.Name).Str("deviceType", string(d.Type)).Err(err).Msg("Fetching device status failed!")
+				log.Error().Str("deviceId", d.ID).Str("hubId", d.Hub).Str("deviceName", d.Name).Str("deviceType", string(d.Type)).Err(err).Msg("fetching device status failed!")
+				return fiber.NewError(fiber.StatusServiceUnavailable, fmt.Errorf("fetching device status failed for %s (%s): %v", d.Name, d.Type, err).Error())
 			} else {
 				result = append(result,
 					Meter{
@@ -137,8 +112,11 @@ func Init() {
 	app.Use(fiberLogger.New())
 
 	// Routes
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.SendString("Pong!")
+	})
 	app.Get("/meters", handler)
-	app.Get("/metrics", monitor.New(monitor.Config{Title: "Hydro-Watcher Metrics Page"}))
+	app.Get("/monitoring", monitor.New(monitor.Config{Title: "go-switchbot-metrics Monitoring Page"}))
 
 	// Start server
 	if err := app.Listen(fmt.Sprintf("%s:%s", viper.GetString("bind_ip"), viper.GetString("bind_port"))); err != nil {

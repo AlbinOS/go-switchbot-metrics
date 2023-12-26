@@ -43,7 +43,6 @@ func init() {
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
 	serveCmd.PersistentFlags().String("bind_ip", "127.0.0.1", "App ip to listen to")
 	viper.BindPFlag("bind_ip", serveCmd.PersistentFlags().Lookup("bind_ip"))
 
