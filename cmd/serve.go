@@ -22,7 +22,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// serveCmd represents the serve command
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "A brief description of your command",
@@ -40,9 +39,6 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(serveCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
 	serveCmd.PersistentFlags().String("bind_ip", "127.0.0.1", "App ip to listen to")
 	viper.BindPFlag("bind_ip", serveCmd.PersistentFlags().Lookup("bind_ip"))
 
@@ -54,8 +50,4 @@ func init() {
 
 	serveCmd.PersistentFlags().String("switchbot_secret_key", "", "SwitchBot API secery key")
 	viper.BindPFlag("switchbot_secret_key", serveCmd.PersistentFlags().Lookup("switchbot_secret_key"))
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// serveCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
