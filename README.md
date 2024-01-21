@@ -1,7 +1,12 @@
 # go-switchbot-metrics
-===
 
 Expose metrics page scrapable by know agent (like Telegraf) for SwitchBot API
+
+## Supported devices
+
+- Meter
+- Meter Plus
+- Outdoor Meter
 
 ## Docker usage
 
