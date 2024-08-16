@@ -7,6 +7,8 @@ Expose metrics page scrapable by know agent (like Telegraf) for SwitchBot API
 - Meter
 - Meter Plus
 - Outdoor Meter
+- Plug Mini (US)
+- Plug Mini (JP)
 
 ## Docker usage
 
