@@ -28,7 +28,7 @@ import (
 	fiberLogger "github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/monitor"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/nasa9084/go-switchbot"
+	"github.com/nasa9084/go-switchbot/v3"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -44,6 +44,18 @@ type DeviceValue struct {
 	Battery     int     `json:"battery"`
 	Humidity    int     `json:"humidity"`
 	Temperature float64 `json:"temperature"`
+	Current     LPFloat `json:"current"`
+	Voltage     LPFloat `json:"voltage"`
+	Power       LPFloat `json:"power"`
+}
+
+type LPFloat struct {
+	Value float64 //
+}
+
+func (l LPFloat) MarshalJSON() ([]byte, error) {
+	s := fmt.Sprintf("%.*f", 2, l.Value)
+	return []byte(s), nil
 }
 
 type Metrics struct {
@@ -75,6 +87,9 @@ func handler(c *fiber.Ctx) error {
 						Battery:     deviceStatus.Battery,
 						Humidity:    deviceStatus.Humidity,
 						Temperature: deviceStatus.Temperature,
+						Current:     LPFloat{Value: deviceStatus.ElectricCurrent / 10.0},
+						Voltage:     LPFloat{Value: deviceStatus.Voltage},
+						Power:       LPFloat{Value: deviceStatus.Voltage * (deviceStatus.ElectricCurrent / 10.0)},
 					},
 				)
 			}
